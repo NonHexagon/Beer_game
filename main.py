@@ -1,57 +1,48 @@
 import pygame
 import sys
-from random import *
+#from random import *
 from Player import Player
 import Warehouse
 
-
 class Game:
     def __init__(self):
-        pass
+        self.players = []
+        self.demand_data = None
+        
+    def load_demand_data(self, file_path):
+        # Загрузка данных о спросе из файла Excel (0-ой столбик)
+        self.demand_data = pd.read_excel(file_path)
+        
+    def add_player(self, player_name, order_at_back = 0, target_inventory=20, regime_native=False, stress_mod_for_turn = 0.05, use_stress = True):
+        if len(self.players)==0:
+            player_at_back = None
+        else:
+            player_at_back = self.players[0]
+    
+        # Добавление игрока
+        player = Player(player_name, player_at_back,
+                        target_inventory, regime_native, stress_mod_for_turn, use_stress)
+        player.refill_player_warehouse(20)
+        player.order_in_front.number = self.demand_data.iloc[0, 0]
+        self.players.insert(0,player)
+        
 
-
-valera = Player(role='vendor')
-nikita = Player(role='wholesaler')
-kirill = Player(role='factory')
-oleg = Player(role='seller')
-crowd = Player(role='customer')
-
-kirill.refill_warehouse(5)
-nikita.refill_warehouse(5)
-valera.refill_warehouse(5)
-oleg.refill_warehouse(5)
-
-easy_start = [1, 3, 3, 2, 2]
-cold_start = [20] * 2
-easy_out = [6] * 23
-
-easy_start.extend(cold_start)
-easy_start.extend(easy_out)
-
-print(easy_start)
-
-for index, week in enumerate(easy_start):
-    order_for_seller = crowd.make_order(week)
-    order_for_wholesaler = oleg.make_order(week + oleg.stress_)
-    order_for_vendor = nikita.make_order(week + nikita.stress_)
-    order_for_factory = valera.make_order(week + valera.stress_)
-    if week % 2 == 0:
-        shipped_order_by_seller = oleg.ship_order(order_for_seller)
-        shipped_order_by_wholesaler = nikita.ship_order(order_for_wholesaler)
-        shipped_order_by_vendor = valera.ship_order(order_for_vendor)
-        shipped_order_by_factory = kirill.ship_order(order_for_factory)
-
-        if index % 2 == 0:
-            crowd.refill_warehouse(shipped_order_by_seller)
-            oleg.refill_warehouse(shipped_order_by_wholesaler)
-            nikita.refill_warehouse(shipped_order_by_vendor)
-            valera.refill_warehouse(shipped_order_by_factory)
-            kirill.refill_warehouse(week + oleg.stress_)
-
-
-print(f'{crowd.warehouse_stock}')
-print(f'{oleg.warehouse_stock, oleg.stress_, oleg.lack_of_goods}')
-print(f'{nikita.warehouse_stock, nikita.stress_, nikita.lack_of_goods}')
-print(f'{valera.warehouse_stock, valera.stress_, valera.lack_of_goods}')
-print(f'{kirill.warehouse_stock, kirill.stress_, kirill.lack_of_goods}')
-
+        
+    def run_game(self, num_rounds):
+        # Запуск игры
+        for rounds in range(num_rounds):
+            self.players[0].order_in_front.number = self.demand_data.iloc[rounds, 0]  # Получение внешнего спроса из данных
+            for player in self.players:
+                player.step()
+                
+            self.players[-1].warehouse_at_back.number = self.players[-1].order_at_back.number
+        for player in self.players:
+            print(player.penalty)
+            
+game = Game()
+game.load_demand_data('demand_data.xlsx')  
+game.add_player('manufacturer')
+game.add_player('distributor')
+game.add_player('wholesaler')
+game.add_player('retailer')  
+game.run_game(50)
