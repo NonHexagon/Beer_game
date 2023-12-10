@@ -17,3 +17,4 @@ class Warehouse(pygame.sprite.Sprite):
         'xxxxxxxxxxxxxxxx',
         'xxxxxxxxxxxxxxxx',
     ]
+

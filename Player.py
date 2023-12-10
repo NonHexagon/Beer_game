@@ -87,3 +87,4 @@ class Player:
     def print_warehouse(self):
         print(self.warehouse_in_front.number, '-+', self.warehouse_stock.number, 'd:', self.lack_of_goods, '+-',
               self.warehouse_at_back.number, '|', end='')
+
