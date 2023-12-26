@@ -1,90 +1,96 @@
 import pygame
-from Warehouse import Warehouse  # рубрика учимся правильно импортировать
+import sys
+from random import *
+from Player import Player
+from Warehouse import Warehouse
+from pygame.locals import *
+import pandas as pd
 
 
-class Player:
-    def __init__(self, player_name, player_at_back, target_inventory=20, regime_native=False, stress_mod_for_turn=0.05,
-                 use_stress=True):
-        self.player_name = player_name  # имя игрока
-        self.lack_of_goods = 0  # долг по поставке
-        self.penalty = 0  # цена за просрочку/хранение
+class Game:
+    def __init__(self):
+        self.players = []
+        self.demand_data = None
+        use_draw = True
+        self.w = 1200
+        self.h = 800
+        
+    def load_demand_data(self, file_path):
+        # Загрузка данных о спросе из файла Excel (0-ой столбик)
+        self.demand_data = pd.read_excel(file_path)
 
-        self.regime_native = regime_native  # какая логика создания заказов
-
-        self.warehouse_stock = Warehouse()  # склад игрока (Square)
-
-        self.player_at_back = player_at_back  # наш поставщик
-
-        self.order_in_front = Warehouse()  # заказ игроку (Square)
-        self.order_at_back = Warehouse()  # заказ игрока (Square)
-
-        self.warehouse_in_front = Warehouse()  # промежуточное поле перед игроком (Square)
-        self.warehouse_at_back = Warehouse()  # промежуточное поле после игрока (Square)
-        self.target_inventory = target_inventory  # к какому запасу на складе стремится
-
-        self.stress_ = 1
-        self.stress_mod_for_turn = stress_mod_for_turn
-        self.use_stress = use_stress
-
-    def make_order(self):
-        # Расчет заказа
-        if self.regime_native:
-            # наивноe решениe
-            self.order_at_back.number = max(int((
-                                                            self.order_in_front.number + self.warehouse_in_front.number + self.target_inventory - self.warehouse_stock.number) * self.stress_),
-                                            0)
+    def add_player(self, player_name, order_at_back=0, target_inventory=20, regime_native=False,
+                   stress_mod_for_turn=0.05, use_stress=True, 
+                   h=20, w = 75, w_ot=10, h_ot=5, letter='B'
+                  ):
+        if len(self.players) == 0:
+            player_at_back = None
+            letter='П'
         else:
-            self.order_at_back.number = max(int((self.order_in_front.number + (
-                        self.target_inventory - self.warehouse_stock.number + self.order_in_front.number * 4)) * self.stress_),
-                                            0)
+            player_at_back = self.players[0]
 
-    def ship_order(self, requested_amount):
-        # отгружаем груз (склад - б2) (отобразить)
-        shipment = min(requested_amount + self.lack_of_goods, self.warehouse_stock.number)  # объем поставки
-        self.warehouse_in_front.number = shipment
-        self.warehouse_stock.number -= shipment
+        # Добавление игрока
+        player = Player(player_name, player_at_back, h, w, w_ot, h_ot,
+                        target_inventory, regime_native, stress_mod_for_turn, use_stress,
+                         letter=letter)
+        player.refill_player_warehouse(20)
+        player.order_in_front.number = self.demand_data.iloc[0, 0]
+        self.players.insert(0, player)
 
-        # считаем долг
-        self.lack_of_goods += (requested_amount - shipment)
-        if self.use_stress:
-            if self.lack_of_goods > 0:
-                self.increase_stress()
-            else:
-                self.decrease_stress()
-        return shipment
+    def run_game(self, num_rounds):
+        
+        pygame.init()
+        
+        
+        screen = pygame.display.set_mode((self.w, self.h))
+        pygame.display.set_caption('Beer Game')
+        # Определение шрифта
+        font = pygame.font.Font(None, 20)
+        # Главный цикл игры
+        running = True
+        while running:     
+            # Запуск игры
+            for rounds in range(num_rounds):
+                # Обработка событий
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        running = False
+                        
+                # Очистка экрана
+                screen.fill((255, 255, 255))
+            
+                self.players[0].order_in_front.number = self.demand_data.iloc[
+                    rounds, 0]  # Получение внешнего спроса из данных
+                i=0
+                for player in self.players:
+                    player.step(screen, font)
+                    text = font.render(player.player_name+': штраф: '+str(player.penalty), True, (0, 0, 0))
+                    
+                    rect = pygame.math.Vector2((20,60*i))
+                    screen.blit(text, rect)
+                    i+=1
+                #player.save_history()
 
-    def refill_player_warehouse(self, received_goods):
-        # получаем груз от игрока далее (б1 - склад) (отобразить)
-        self.warehouse_stock.number += received_goods
-        # принимаем товар от игрока далее на промежуточную точку (б2 - б1) (отобразить)
-        if self.player_at_back is not None:
-            self.warehouse_at_back.number = self.player_at_back.warehouse_in_front.number
+                pygame.time.delay(1000*3)  # Задержка в 5 секунду
+                # Обновление экрана
+                pygame.display.flip()
+            break
+        # Завершение работы Pygame
+        pygame.quit()  # Выход из Pygame после завершения цикла      
 
-    def step(self):
+        
+    def main(self, players_list, file_path):
+        self.load_demand_data(file_path)
+        sh=len(players_list)
+        w=int(self.w/(sh+1))
+        sh=sh+0.2#1.5
+        for i in range (len(players_list)):
+            self.add_player(players_list[i], w = int(w*(sh-i)),w_ot=w, h = self.h//2, h_ot=self.h//6)
+            #print('lll', int(w*(sh-i*2)))
+        self.run_game(self.demand_data.shape[0])
 
-        self.refill_player_warehouse(self.warehouse_at_back.number)
-        self.ship_order(self.order_in_front.number)
 
-        self.penalty += (self.lack_of_goods * 2 + self.warehouse_stock.number)
-        # передаем заказы далее (разместить - входящий) (отобразить)
-        if self.player_at_back is not None:
-            self.player_at_back.order_in_front.number = self.order_at_back.number
-
-        self.make_order()
-
-    def increase_stress(self):
-        if self.stress_ < 1.5:
-            self.stress_ += self.stress_mod_for_turn
-
-    def decrease_stress(self):
-        if self.stress_ > 0.5:
-            self.stress_ -= self.stress_mod_for_turn
-
-    # псевдографика для тестирования
-    def print_orders(self):
-        print(self.order_in_front.number, '-', self.player_name, '-', self.order_at_back.number, '|', end='')
-
-    def print_warehouse(self):
-        print(self.warehouse_in_front.number, '-+', self.warehouse_stock.number, 'd:', self.lack_of_goods, '+-',
-              self.warehouse_at_back.number, '|', end='')
-
+if __name__ == "__main__":
+    game = Game()
+    game.main(['manufacturer', 'distributor', 'wholesaler', 'retailer'], 'demand_data.xlsx')
+#print(size, w+w_ot,w, w-w_ot, h, h+h_ot)
