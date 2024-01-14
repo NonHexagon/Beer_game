@@ -11,10 +11,10 @@ class Game:
     def __init__(self):
         self.players = []
         self.demand_data = None
-        use_draw = True
+        self.use_draw = True
         self.w = 1200
         self.h = 800
-        
+        self.second=1000*3
     def load_demand_data(self, file_path):
         # Загрузка данных о спросе из файла Excel (0-ой столбик)
         self.demand_data = pd.read_excel(file_path)
@@ -44,50 +44,58 @@ class Game:
         
         screen = pygame.display.set_mode((self.w, self.h))
         pygame.display.set_caption('Beer Game')
+        fs=min((self.w, self.h))//22
         # Определение шрифта
-        font = pygame.font.Font(None, 20)
+        font = pygame.font.Font(None, fs)
         # Главный цикл игры
-        running = True
-        while running:     
-            # Запуск игры
-            for rounds in range(num_rounds):
-                # Обработка событий
-                for event in pygame.event.get():
-                    if event.type == pygame.QUIT:
-                        running = False
-                        
-                # Очистка экрана
-                screen.fill((255, 255, 255))
+        stop_running = False
+        fs=int(fs*1.5)
+        # Запуск игры
+        for rounds in range(num_rounds):
+            # Обработка событий
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                        stop_running = True
+            if stop_running:
+                break
+            # Очистка экрана
+            screen.fill((255, 255, 255))
             
-                self.players[0].order_in_front.number = self.demand_data.iloc[
+            self.players[0].order_in_front.number = self.demand_data.iloc[
                     rounds, 0]  # Получение внешнего спроса из данных
-                i=0
-                for player in self.players:
+            i=0
+            for player in self.players:
                     player.step(screen, font)
                     text = font.render(player.player_name+': штраф: '+str(player.penalty), True, (0, 0, 0))
                     
-                    rect = pygame.math.Vector2((20,60*i))
+                    rect = pygame.math.Vector2((20,fs*i))
                     screen.blit(text, rect)
                     i+=1
-                #player.save_history()
-
-                pygame.time.delay(1000*3)  # Задержка в 5 секунду
-                # Обновление экрана
-                pygame.display.flip()
-            break
+                
+            pygame.time.delay(self.second)  
+            # Обновление экрана
+            pygame.display.flip()
+        
         # Завершение работы Pygame
         pygame.quit()  # Выход из Pygame после завершения цикла      
-
+        return([[player.history for player in self.players], [player.player_name for player in self.players]])#
         
-    def main(self, players_list, file_path, stress_mod_for_turn, target_inventory, use_stress, regime_native):
+    def main(self, players_list, file_path, stress_mod_for_turn, target_inventory, use_stress, regime_native, second, use_draw, window_width, window_height):
+        self.w =  window_width
+        self.h =  window_height
         self.load_demand_data(file_path)
         sh=len(players_list)
         w=int(self.w/(sh+1))
+        self.second=int(1000*float(second))
+        self.use_draw = use_draw
         sh=sh+0.2#1.5
         for i in range (len(players_list)):
             self.add_player(players_list[i], w = int(w*(sh-i)),w_ot=w, h = self.h//2, h_ot=self.h//6, stress_mod_for_turn=float(stress_mod_for_turn[i]), target_inventory=int(target_inventory[i]),use_stress=use_stress, regime_native=regime_native)# order_at_back=0, 20, False, True, h=20, w = 75, w_ot=10, h_ot=5, letter='B
             #print('lll', int(w*(sh-i*2)))
-        self.run_game(self.demand_data.shape[0])
+        return(self.run_game(self.demand_data.shape[0]))
+
+
+
 
 #, _box.text.split('; '), , )
 if __name__ == "__main__":
