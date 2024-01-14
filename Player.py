@@ -5,7 +5,7 @@ from Warehouse import Warehouse  # рубрика учимся правильн�
 class Player:
     def __init__(self, player_name, player_at_back, 
                  h = 10, w = 10, w_ot=3, h_ot=3, 
-                 target_inventory=20, regime_native=False, stress_mod_for_turn=0.05,
+                 target_inventory=20, regime_native="Наивная", stress_mod_for_turn=0.05,
                  use_stress=True, use_draw=True, letter='B'
                  ):
 
@@ -42,7 +42,7 @@ class Player:
 
     def make_order(self):
         # Расчет заказа
-        if self.regime_native:
+        if self.regime_native=="Наивная":
             # наивноe решениe
             self.order_at_back.number = max(int((
                 self.order_in_front.number + self.warehouse_in_front.number + self.target_inventory
@@ -132,8 +132,3 @@ class Player:
         self.history['warehouse_states'].append(self.warehouse_stock.number)
         self.history['warehouse_at_back'].append(self.warehouse_at_back.number)
         self.history['order_at_back'].append(self.order_at_back.number)
-        
-
-        
-        
-
