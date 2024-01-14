@@ -1,176 +1,156 @@
-import pygame
 from game import Game
-# Инициализация pygame
-pygame.init()
+import tkinter as tk
+from tkinter import messagebox
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
 
-# Размеры окна
-WIDTH = 1000
-HEIGHT = 800
-
-# Цвета
-BLACK = (0, 0, 0)
-RED = (255, 0, 0)
-BLUE = (0, 0, 255)
-YELLOW = (255, 255, 0)
-
-# Создание окна главного меню
-menu_window = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Главное меню")
-
-
-use_stress = False
-regime_native=False
-
-
-font = pygame.font.Font(None, 36)
+# Перенесем код по созданию графика в функцию, чтобы ее можно было вызвать из tkinter приложения
+def create_plot(data, names):
+    # Создаем tkinter приложение
+    root = tk.Tk()
+    root.title("Итоги")
     
+    locs = ['penalties', 'lack_of_goods','warehouse_states']#list(data[0].keys())
+    fig = Figure(figsize=(12, 12))
+    ax = fig.add_subplot(111)
+    #fig.subplots_adjust(top=1)
+    ln = len(names)
+    ll = len(locs)
+    x = [i for i in range(len(data[0][locs[0]]))]
     
+    for i in range(ll):
+        ax = fig.add_subplot(ll, 1, i+1)
+        ax.set_title(locs[i])
+        for j in range(ln):
+            #print(data[j][locs[i]])
+            ax.plot(x, data[j][locs[i]], label=names[j])
+        ax.legend()
     
-class TextInputBox(pygame.sprite.Sprite):
-    def __init__(self, x, y, w, font, start_text=""):
-        super().__init__()
-        self.color = (55, 255, 55)
-        self.backcolor = None
-        self.pos = (x, y) 
-        self.width = w
-        self.font = font
-        self.active = False
-        self.text = start_text
-        self.render_text()
-
-    def render_text(self):
-        t_surf = self.font.render(self.text, True, self.color, self.backcolor)
-        self.image = pygame.Surface((max(self.width, t_surf.get_width()+10), t_surf.get_height()+10), pygame.SRCALPHA)
-        #if self.backcolor:
-        #    self.image.fill(self.backcolor)
-        self.image.blit(t_surf, (5, 5))
-        pygame.draw.rect(self.image, self.color, self.image.get_rect().inflate(-2, -2), 2)
-        self.rect = self.image.get_rect(topleft = self.pos)
-
-    def update(self, event_list):
-        for event in event_list:
-            if event.type == pygame.MOUSEBUTTONDOWN and not self.active:
-                self.active = self.rect.collidepoint(event.pos)
-            if event.type == pygame.KEYDOWN and self.active:
-                if event.key == pygame.K_RETURN:
-                    self.active = False
-                elif event.key == pygame.K_BACKSPACE:
-                    self.text = self.text[:-1]
-                else:
-                    self.text += event.unicode
-                self.render_text()
+    # Создаем объект FigureCanvasTkAgg с использованием созданной ранее фигуры
+    canvas = FigureCanvasTkAgg(fig, master=root)
+    canvas.draw()
+    canvas.get_tk_widget().pack()
     
+    # Запускаем главный цикл tkinter приложения
+    root.mainloop()
+
+
+def run_games():
+    # реализуем функцию запуска игры
+    name = name_entry.get()
+    stress_mod_for_turn = stress_mod_for_turn_entry.get()
+    target_inventory = target_inventory_entry.get()
+    # проверяем корректность ввода
+    if name.count(';') != stress_mod_for_turn.count(';'):
+        messagebox.showerror("Ошибка", "Некорректное введен стресс!")
+    if name.count(';') != target_inventory.count(';'):
+        messagebox.showerror("Ошибка", "Некорректное введен минимум на складе!")
     
-    
-    
-    
-pygame.init()
-
-
-clock = pygame.time.Clock()
-text_input_box = TextInputBox(10,  HEIGHT / 2-100, 400, pygame.font.SysFont(None, 60), start_text="manufacturer; distributor; wholesaler; retailer")#WIDTH / 2,  HEIGHT / 2, 400, font)
-players_list = pygame.sprite.Group(text_input_box)
-
-xlsx_input_box = TextInputBox(10,  HEIGHT / 2+150, 400, pygame.font.SysFont(None, 60), start_text="demand_data.xlsx")#WIDTH / 2,  HEIGHT / 2, 400, font)
-xlsx_path = pygame.sprite.Group(xlsx_input_box)
-
-stress_mod_for_turn_box = TextInputBox(10,  HEIGHT / 2+300, 400, pygame.font.SysFont(None, 60), start_text="0.05; 0.05; 0.05; 0.05")#WIDTH / 2,  HEIGHT / 2, 400, font)
-stress_mod_for_turn = pygame.sprite.Group(stress_mod_for_turn_box)
-
-
-target_inventory_box = TextInputBox(10,  HEIGHT / 2-250, 400, pygame.font.SysFont(None, 60), start_text="20; 20; 20; 20")#WIDTH / 2,  HEIGHT / 2, 400, font)
-target_inventory = pygame.sprite.Group(target_inventory_box)
+    game = Game()
+    try:
+        data=game.main(name.split('; '), file_entry.get(), stress_mod_for_turn.split('; '), target_inventory.split('; '), use_stress.get(), regime_var.get(), second_entry.get(), use_draw.get(), int(window_width*1.5), int(window_height*1.5))
+        #print(data)
+        create_plot(data[0], data[1])
+    except ValueError:
+        messagebox.showerror("Ошибка", "Проверьте ввод данных!")
    
+    except FileNotFoundError:
+        messagebox.showerror("Ошибка", "Файл не найден!")
+    #except:
+    #    messagebox.showerror("Ошибка", "Не опознанная ошибка! Приносим извинения")
     
-
-
-running = True
-while running:
-    # Очистка окна
-    menu_window.fill(BLUE)
-    
-    
-    clock.tick(60)
-    # Обработка событий
-    event_list = pygame.event.get()
-    for event in event_list:
-        if event.type == pygame.QUIT:
-            running = False
         
-        # Обработка нажатий клавиш
-        elif event.type == pygame.KEYDOWN and not text_input_box.active and not xlsx_input_box.active and not stress_mod_for_turn_box.active and not target_inventory_box.active:
-            # Ввод имени игрока
-            if event.key == pygame.K_1:
-                game = Game()
-                game.main(text_input_box.text.split('; '), xlsx_input_box.text, stress_mod_for_turn_box.text.split('; '), target_inventory_box.text.split('; '), use_stress, regime_native)#players_list, file_path,
-            elif event.key == pygame.K_2:
-               regime_native = not regime_native
-            
-            
-            elif event.key == pygame.K_3:
-                use_stress = not use_stress
-                
-
-    # Отрисовка текста
-    
-    text = font.render("Главное меню", True, BLACK)
-    text_rect = text.get_rect(center=(WIDTH / 2, HEIGHT / 2 - 350))
-    menu_window.blit(text, text_rect)
-
-    text = font.render("Минимум на складе", True, BLACK)
-    text_rect = text.get_rect(center=(WIDTH / 2, HEIGHT / 2 - 300))
-    menu_window.blit(text, text_rect)
 
 
-    
-    text = font.render("1) Старт игры", True, BLACK)
-    text_rect = text.get_rect(center=(WIDTH / 2, HEIGHT / 2 - 200))
-    menu_window.blit(text, text_rect)
-    
-    
-    
-    
-    
-    # Имя игрока
-    text = font.render("Имена игроков: ", True, BLACK)
-    text_rect = text.get_rect(center=(WIDTH / 2, HEIGHT / 2 -150))
-    menu_window.blit(text, text_rect)
-    
-    
-    regime_text = "Продвинутая" if regime_native else "Наивная"
-    text = font.render("2) Режим дозаказа: " + regime_text, True, BLACK)
-    text_rect = text.get_rect(center=(WIDTH / 2, HEIGHT / 2))
-    menu_window.blit(text, text_rect)
-    
-    
-    stres_text = "Включен" if use_stress else "Выключен"
-    text = font.render("3) Стресс: " + stres_text, True, BLACK)
-    text_rect = text.get_rect(center=(WIDTH / 2, HEIGHT / 2 + 50))
-    menu_window.blit(text, text_rect)
 
-   
-    
-    text = font.render("4) xlsx с данными: ", True, BLACK)
-    text_rect = text.get_rect(center=(WIDTH / 2, HEIGHT / 2 + 100))
-    menu_window.blit(text, text_rect)
+# создаем главное окно
+root = tk.Tk()
+root.title("Главное меню")
 
-   
-    text = font.render("5) Стресс за ход: ", True, BLACK)
-    text_rect = text.get_rect(center=(WIDTH / 2, HEIGHT / 2 + 250))
-    menu_window.blit(text, text_rect)
+# получаем размер окна пользователя
+screen_width = root.winfo_screenwidth()
+screen_height = root.winfo_screenheight()
 
-    target_inventory.update(event_list)
-    target_inventory.draw(menu_window)
-    stress_mod_for_turn.update(event_list)
-    stress_mod_for_turn.draw(menu_window)
-    # Обновление экрана
-    xlsx_path.update(event_list)
-    xlsx_path.draw(menu_window)
-    
-    players_list.update(event_list)
-   
-    players_list.draw(menu_window)
-    
-    pygame.display.flip()
+# устанавливаем размер окна главного меню
+window_width = int(screen_width / 2)
+window_height = int(screen_height / 2)
+root.geometry(f'{window_width}x{window_height}+{int(screen_width / 4)}+{int(screen_height / 4)}')
 
-pygame.quit()
+
+
+# создаем фрейм с опциями
+options_frame = tk.Frame(root)
+options_frame.pack(pady=10)
+
+
+start_button = tk.Button(options_frame, text="Старт игры", command=run_games)
+start_button.grid(row=0, column=0, padx=10)
+
+
+name_label = tk.Label(options_frame, text="Имя игрока:")
+name_label.grid(row=1, column=0)
+name_entry = tk.Entry(options_frame)
+name_entry.insert(0, "manufacturer; distributor; wholesaler; retailer")
+name_entry.grid(row=1, column=1, padx=10)
+
+
+
+file_label = tk.Label(options_frame, text="Путь до файла со спросом пользователей:")
+file_label.grid(row=2, column=0)
+file_entry = tk.Entry(options_frame)
+file_entry.insert(0, "demand_data.xlsx")
+file_entry.grid(row=2, column=1, padx=10)
+
+
+target_inventory_label = tk.Label(options_frame, text="Минимум на складе:")
+target_inventory_label.grid(row=3, column=0)
+target_inventory_entry = tk.Entry(options_frame)
+target_inventory_entry.insert(0, "20; 20; 20; 20")
+target_inventory_entry.grid(row=3, column=1, padx=10)
+
+
+regime_label = tk.Label(options_frame, text="Режим дозаказа:")
+regime_label.grid(row=4, column=0)
+regimes = ["Продвинутая", "Наивная"]
+regime_var = tk.StringVar(options_frame)
+regime_var.set(regimes[0])
+regime_option = tk.OptionMenu(options_frame, regime_var, *regimes)
+regime_option.grid(row=4, column=1, padx=10)
+
+
+
+stress_mod_for_turn_label = tk.Label(options_frame, text="Стресс за ход:")
+stress_mod_for_turn_label.grid(row=5, column=0)
+stress_mod_for_turn_entry = tk.Entry(options_frame)
+stress_mod_for_turn_entry.insert(0, "0.05; 0.05; 0.05; 0.05")
+stress_mod_for_turn_entry.grid(row=5, column=1, padx=10)
+
+
+
+use_stress_label = tk.Label(options_frame, text="Использовать стресс:")
+use_stress_label.grid(row=6, column=0)
+use_stress = tk.BooleanVar()
+use_stress.set(True)
+use_stress_checkbutton = tk.Checkbutton(options_frame, variable=use_stress)
+use_stress_checkbutton.grid(row=6, column=1, padx=10)
+
+
+#second.get(), use_draw.get()
+second_label = tk.Label(options_frame, text="Секунд на ход:")
+second_label.grid(row=7, column=0)
+second_entry = tk.Entry(options_frame)
+second_entry.insert(0, "1")
+second_entry.grid(row=7, column=1, padx=10)
+
+
+
+use_draw_label = tk.Label(options_frame, text="Отображать игру:")
+use_draw_label.grid(row=8, column=0)
+use_draw = tk.BooleanVar()
+use_draw.set(True)
+use_draw_checkbutton = tk.Checkbutton(options_frame, variable=use_draw)
+use_draw_checkbutton.grid(row=8, column=1, padx=10)
+
+
+# запускаем основной цикл обработки событий
+root.mainloop()
